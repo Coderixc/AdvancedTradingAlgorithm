@@ -1,6 +1,5 @@
 # Define Data File Header as present in Csv Format """
 # time	into	inth	intl		intc	intvwap	intv	v	intoi	oi
-
 class OHLCV:
     time ="time"
     into="into"
@@ -19,4 +18,3 @@ class DataPath:
 
     filename =  "NIFTY_20220501"
     path = ".//Data//"+filename+".csv"
-
