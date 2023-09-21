@@ -45,4 +45,4 @@ class IndexAnalysis :
 
     def __init__( self ) :
         _data = ReadData( )
-        self.pd.DataFrame = _data.get_data( )
+        self.df_Ohlc = _data.get_data( )
