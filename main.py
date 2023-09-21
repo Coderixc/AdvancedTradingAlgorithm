@@ -15,6 +15,8 @@ class ReadData:
 
         self.df_Ohlc = pd.read_csv(self.path)
 
+
+
     def verify_ohlc_data( self ):
 
          # if datafraome is empty
@@ -29,6 +31,21 @@ class ReadData:
         print("Data : Starting from ->",starting_time)
         print("Data: Last Data time ->",last_time)
 
+        if (count_rows >=0):
+            return True
+        else:
+            return False
+
+    def get_data( self ):
+        isvalid =self.verify_ohlc_data( )
+        if isvalid :
+            return self.df_Ohlc
+
+        else:
+            print("Error in Data file :",da.DataPath.path)
+            return  pd.DataFrame()
+
+
 
 
 
@@ -42,9 +59,7 @@ class IndexAnalysis:
 
 
     def __init__(self):
-        self.path = da.DataPath.path
 
-        self.df_Ohlc = pd.read_csv(self.path)
 
         #check if file is empty or not
 
