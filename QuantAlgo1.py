@@ -1,4 +1,7 @@
 import pandas as pd
+from stock_indicators import CandlePart
+from stock_indicators import Quote
+from stock_indicators import indicators
 
 import FinancialData as fd
 
@@ -46,11 +49,9 @@ class TradeStatus :
     Open = 1
     Close = 0
 
-
 class IntraCarry :
     Intra = "I"
     Carry = "C"
-
 
 class PlaceOrder :
     EntryDate = "EntryDate"
@@ -63,7 +64,6 @@ class PlaceOrder :
     ExitPrice = "ExitPrice"
     ExitTime = "ExitTime"
     ExitDate = "ExitDate"
-
 
 #  create class to load OHLC data
 class IndexAnalysis :
@@ -121,13 +121,41 @@ class IndexAnalysis :
             mask = self.df_Ohlc[ fd.OHLCV.time ].astype( str ).str[ 0 :10 ] == str( trading_date )
             # replace('-','')
             df_feed = self.df_Ohlc.loc[ mask ]
-            self.EntryTrade( df_feed )
+            self.EntryTrade( df_feed , trading_date )
 
             # df_feed.head()
             # print( len( df_feed ) )
 
             # df_feed = self.df_Ohlc.where( self.df_Ohlc[fd.OHLCV.time].astype(datetime).data() ==  trading_date)
 
-    def EntryTrade( self , df ) :
+    def EntryTrade( self , df , trddate ) :
         # print(len( df))
-        print( df.head( ) )
+        # convert to List
+        # quotes_list = [
+        #     Quote( d , o , h , l , c , v )
+        #     for d , o , h , l , c , v
+        #     in zip( df[ fd.OHLCV.time] , df[ fd.OHLCV.into] , df[ fd.OHLCV.inth ] , df[ fd.OHLCV.intl ] , df[ fd.OHLCV.intc ] , df[ fd.OHLCV.v ] )
+        # ]
+
+        quotes_list = [ ]
+
+        for id , bar in df.iterrows( ) :
+            # quotes_list.insert(bar[fd.OHLCV.time],bar[fd.OHLCV.into],bar[fd.OHLCV.inth],bar[fd.OHLCV.intl],bar[fd.OHLCV.intc],bar[fd.OHLCV.v])
+
+            q = Quote( bar[ fd.OHLCV.time ] , bar[ fd.OHLCV.into ] , bar[ fd.OHLCV.inth ] , bar[ fd.OHLCV.intl ] ,
+                       bar[ fd.OHLCV.intc ] , bar[ fd.OHLCV.v ]
+                       )
+            quotes_list.append( q )
+            open = bar[ fd.OHLCV.into ]
+            high = bar[ fd.OHLCV.inth ]
+            low = bar[ fd.OHLCV.intl ]
+            close = bar[ fd.OHLCV.intc ]
+
+            results = indicators.get_sma( quotes_list , 20 , CandlePart.CLOSE )
+
+            final_res = results[ -1 ].sma
+            mess = " TradeDate : "+str( trddate )+" Time"+str( bar[ fd.OHLCV.time ] )+" Open :"+str( open
+                                                                                                     )+" High :"+str(
+                high
+                )+" Low :"+str( low )+" Close :"+str( close )+" "
+            print( mess+str( results[ -1 ].sma ) )
