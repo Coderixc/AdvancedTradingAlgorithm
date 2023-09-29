@@ -40,6 +40,31 @@ class ReadData :
             return pd.DataFrame( )
 
 
+# Trade parameter
+
+class TradeStatus :
+    Open = 1
+    Close = 0
+
+
+class IntraCarry :
+    Intra = "I"
+    Carry = "C"
+
+
+class PlaceOrder :
+    EntryDate = "EntryDate"
+    EntryTime = "EntryTime"
+    Qty = "Qty"
+    EntryPrice = "EntryPrice"
+    Status = "Status"
+    Ltp = "LTP"
+    PnL = "PnL"
+    ExitPrice = "ExitPrice"
+    ExitTime = "ExitTime"
+    ExitDate = "ExitDate"
+
+
 #  create class to load OHLC data
 class IndexAnalysis :
 
@@ -52,6 +77,15 @@ class IndexAnalysis :
         self.reverse_dataframe( )
         self.get_all_distinct_Trading_data( )
         self.Generate_Trade_Signal( )
+        self.TradeBank( self.df_Trades )
+
+    def TradeBank( self , df ) :
+        df = pd.DataFrame(
+            columns = [ PlaceOrder.EntryDate , PlaceOrder.EntryTime , PlaceOrder.Qty , PlaceOrder.EntryPrice ,
+                        PlaceOrder.Status , PlaceOrder.Ltp
+                , PlaceOrder.Pnl , PlaceOrder.ExitPrice , PlaceOrder.ExitTime , PlaceOrder.ExitDate
+                        ]
+        )
 
     def reverse_dataframe( self ) :
         self.df_Ohlc.sort_index( ascending = False )
@@ -87,8 +121,13 @@ class IndexAnalysis :
             mask = self.df_Ohlc[ fd.OHLCV.time ].astype( str ).str[ 0 :10 ] == str( trading_date )
             # replace('-','')
             df_feed = self.df_Ohlc.loc[ mask ]
+            self.EntryTrade( df_feed )
 
             # df_feed.head()
-            print( len( df_feed ) )
+            # print( len( df_feed ) )
 
             # df_feed = self.df_Ohlc.where( self.df_Ohlc[fd.OHLCV.time].astype(datetime).data() ==  trading_date)
+
+    def EntryTrade( self , df ) :
+        # print(len( df))
+        print( df.head( ) )
