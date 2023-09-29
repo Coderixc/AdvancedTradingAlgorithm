@@ -11,7 +11,8 @@ class OHLCV:
     intoi="intoi"
     oi="oi"
 
-
+class DateTimeFromat :
+    dd_mm_yyyy__HH_MM_SS = "%d-%m-%Y %H:%M:%S"
 
 
 class DataPath:
