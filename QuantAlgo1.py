@@ -77,15 +77,15 @@ class IndexAnalysis :
 
         self.reverse_dataframe( )
         self.get_all_distinct_Trading_data( )
-        self.Generate_Trade_Signal( )
         self.TradeBank( )
+        self.Generate_Trade_Signal( )
+
 
     def TradeBank( self ) :
         self.df_Trades = pd.DataFrame(
             columns = [ PlaceOrder.EntryDate , PlaceOrder.EntryTime , PlaceOrder.Qty , PlaceOrder.EntryPrice ,
                         PlaceOrder.Status , PlaceOrder.Ltp
-                , PlaceOrder.Pnl , PlaceOrder.ExitPrice , PlaceOrder.ExitTime , PlaceOrder.ExitDate
-                        ]
+                , PlaceOrder.PnL , PlaceOrder.ExitPrice , PlaceOrder.ExitTime , PlaceOrder.ExitDate ]
         )
 
     def reverse_dataframe( self ) :
@@ -129,6 +129,12 @@ class IndexAnalysis :
 
             # df_feed = self.df_Ohlc.where( self.df_Ohlc[fd.OHLCV.time].astype(datetime).data() ==  trading_date)
 
+    def Add_trades_to_TradeBank( self , df_today ) :
+
+        concat_df = pd.concat( [ self.df_Trades , df_today ] )
+
+        return concat_df
+
     def EntryTrade( self , df , trddate ) :
         # print(len( df))
         # convert to List
@@ -137,6 +143,8 @@ class IndexAnalysis :
         #     for d , o , h , l , c , v
         #     in zip( df[ fd.OHLCV.time] , df[ fd.OHLCV.into] , df[ fd.OHLCV.inth ] , df[ fd.OHLCV.intl ] , df[ fd.OHLCV.intc ] , df[ fd.OHLCV.v ] )
         # ]
+
+        df_exchange = pd.DataFrame( data = None , columns = self.df_Trades.columns , index = self.df_Trades.index )
 
         quotes_list = [ ]
         m_open = 0
@@ -176,7 +184,7 @@ class IndexAnalysis :
                        )
             quotes_list.append( q )
 
-            results = indicators.get_sma( quotes_list , 20 , CandlePart.CLOSE )
+            results = indicators.get_sma( quotes_list , 50 , CandlePart.CLOSE )
 
             final_res = results[ -1 ].sma
             mess = " TradeDate : "+str( trddate )+" Time"+str( bar[ fd.OHLCV.time ] )+" Open :"+str( open
@@ -192,10 +200,18 @@ class IndexAnalysis :
 
             if final_res is not None :
 
-                if final_res > Ltp and Ltp > m_open and body_length > 80 :
+                ohlc4 = (open+high+low+close) / 4
+                m_ohlc = (m_open+m_high+m_low+m_close) / 4
+
+                if final_res > Ltp and Ltp > m_open and body_length > 30 and Ltp > ohlc4 and Ltp > m_ohlc :
                     _trddate = trddate
 
-                    _entrytime = self.df_Ohlc[ fd.OHLCV.time ].astype( str ).str[ 11 :20 ].replace( ":" , "" )
+                    _entrytime = bar[ fd.OHLCV.time ].time( )
                     print( _entrytime )
 
-                    # self.df_Trades.loc[ len( self.df_Trades ) ] = [ ]
+                    df_exchange.loc[ len( df_exchange ) ] = [ _trddate , _entrytime , 1 , Ltp , TradeStatus.Open , Ltp ,
+                                                              0 , -1 , -1 , -1 ]
+
+        # print("Trade Bank :",self.df_Trades )
+
+        print( self.Add_trades_to_TradeBank( df_exchange ) )

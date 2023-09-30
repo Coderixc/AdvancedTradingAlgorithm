@@ -17,5 +17,5 @@ class DateTimeFromat :
 
 class DataPath:
 
-    filename =  "NIFTY_20220501"
+    filename = "NIFTY_28_29_Sep_TF_1_MIN"
     path = ".//Data//"+filename+".csv"
