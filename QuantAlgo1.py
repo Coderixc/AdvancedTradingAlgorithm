@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from stock_indicators import CandlePart
 from stock_indicators import Quote
@@ -77,10 +78,10 @@ class IndexAnalysis :
         self.reverse_dataframe( )
         self.get_all_distinct_Trading_data( )
         self.Generate_Trade_Signal( )
-        self.TradeBank( self.df_Trades )
+        self.TradeBank( )
 
-    def TradeBank( self , df ) :
-        df = pd.DataFrame(
+    def TradeBank( self ) :
+        self.df_Trades = pd.DataFrame(
             columns = [ PlaceOrder.EntryDate , PlaceOrder.EntryTime , PlaceOrder.Qty , PlaceOrder.EntryPrice ,
                         PlaceOrder.Status , PlaceOrder.Ltp
                 , PlaceOrder.Pnl , PlaceOrder.ExitPrice , PlaceOrder.ExitTime , PlaceOrder.ExitDate
@@ -88,7 +89,7 @@ class IndexAnalysis :
         )
 
     def reverse_dataframe( self ) :
-        self.df_Ohlc.sort_index( ascending = False )
+        self.df_Ohlc.sort_index( ascending = True )
 
     def get_all_distinct_Trading_data( self ) :
         """ Convert  coloumn to datetime"""
@@ -121,7 +122,7 @@ class IndexAnalysis :
             mask = self.df_Ohlc[ fd.OHLCV.time ].astype( str ).str[ 0 :10 ] == str( trading_date )
             # replace('-','')
             df_feed = self.df_Ohlc.loc[ mask ]
-            self.EntryTrade( df_feed , trading_date )
+            self.EntryTrade( df_feed.sort_index( ascending = False ) , trading_date )
 
             # df_feed.head()
             # print( len( df_feed ) )
@@ -138,18 +139,42 @@ class IndexAnalysis :
         # ]
 
         quotes_list = [ ]
+        m_open = 0
+        m_close = 0
+        m_high = 0
+        m_low = 0
+
+        flag_open = True
 
         for id , bar in df.iterrows( ) :
             # quotes_list.insert(bar[fd.OHLCV.time],bar[fd.OHLCV.into],bar[fd.OHLCV.inth],bar[fd.OHLCV.intl],bar[fd.OHLCV.intc],bar[fd.OHLCV.v])
+
+            open = bar[ fd.OHLCV.into ]
+            high = bar[ fd.OHLCV.inth ]
+            low = bar[ fd.OHLCV.intl ]
+            close = bar[ fd.OHLCV.intc ]
+            Ltp = bar[ fd.OHLCV.intc ]
+
+            if flag_open == True :
+                print( "First Tick Update" )
+                m_open = open
+                m_high = high
+                m_low = low
+                m_close = close
+                flag_open = False
+
+            if m_low > low :
+                m_low = low
+
+            if m_high < high :
+                m_high = high
+
+            m_close = Ltp
 
             q = Quote( bar[ fd.OHLCV.time ] , bar[ fd.OHLCV.into ] , bar[ fd.OHLCV.inth ] , bar[ fd.OHLCV.intl ] ,
                        bar[ fd.OHLCV.intc ] , bar[ fd.OHLCV.v ]
                        )
             quotes_list.append( q )
-            open = bar[ fd.OHLCV.into ]
-            high = bar[ fd.OHLCV.inth ]
-            low = bar[ fd.OHLCV.intl ]
-            close = bar[ fd.OHLCV.intc ]
 
             results = indicators.get_sma( quotes_list , 20 , CandlePart.CLOSE )
 
@@ -158,4 +183,19 @@ class IndexAnalysis :
                                                                                                      )+" High :"+str(
                 high
                 )+" Low :"+str( low )+" Close :"+str( close )+" "
-            print( mess+str( results[ -1 ].sma ) )
+            # print( mess+str( results[ -1 ].sma ) )
+
+            """Entry Condition """
+            """ if Closing Price  > SMA -> Trigger Trades"""
+
+            body_length = np.absolute( m_open-m_close )
+
+            if final_res is not None :
+
+                if final_res > Ltp and Ltp > m_open and body_length > 80 :
+                    _trddate = trddate
+
+                    _entrytime = self.df_Ohlc[ fd.OHLCV.time ].astype( str ).str[ 11 :20 ].replace( ":" , "" )
+                    print( _entrytime )
+
+                    # self.df_Trades.loc[ len( self.df_Trades ) ] = [ ]
