@@ -15,7 +15,7 @@ class DateTimeFromat :
     dd_mm_yyyy__HH_MM_SS = "%d-%m-%Y %H:%M:%S"
 
 
-class DataPath:
-
-    filename = "NIFTY_28_29_Sep_TF_1_MIN"
+class DataPath :
+    filename = "NIFTY_22_28_TF_1"
+    # filename = "NIFTY_20220501"
     path = ".//Data//"+filename+".csv"

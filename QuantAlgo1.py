@@ -42,10 +42,7 @@ class ReadData :
         else :
             print( "Error in Data file :" , fd.DataPath.path )
             return pd.DataFrame( )
-
-
 # Trade parameter
-
 class TradeStatus :
     Open = 1
     Close = 0
@@ -53,7 +50,6 @@ class TradeStatus :
 class IntraCarry :
     Intra = "I"
     Carry = "C"
-
 class PlaceOrder :
     EntryDate = "EntryDate"
     EntryTime = "EntryTime"
@@ -65,7 +61,6 @@ class PlaceOrder :
     ExitPrice = "ExitPrice"
     ExitTime = "ExitTime"
     ExitDate = "ExitDate"
-
 #  create class to load OHLC data
 class IndexAnalysis :
 
@@ -74,13 +69,12 @@ class IndexAnalysis :
         self.df_Ohlc = _data.get_data( )
 
         self.List_Distinct_TradeDate = [ ]
+        self.df_Trades = pd.DataFrame( )
 
         self.reverse_dataframe( )
         self.get_all_distinct_Trading_data( )
         self.TradeBank( )
         self.Generate_Trade_Signal( )
-
-
     def TradeBank( self ) :
         self.df_Trades = pd.DataFrame(
             columns = [ PlaceOrder.EntryDate , PlaceOrder.EntryTime , PlaceOrder.Qty , PlaceOrder.EntryPrice ,
@@ -95,7 +89,9 @@ class IndexAnalysis :
         """ Convert  coloumn to datetime"""
         self.df_Ohlc[ fd.OHLCV.time ] = pd.to_datetime( self.df_Ohlc[ fd.OHLCV.time ] )
 
-        self.List_Distinct_TradeDate = self.df_Ohlc[ fd.OHLCV.time ].map( pd.Timestamp.date ).unique( )
+        self.List_Distinct_TradeDate = self.df_Ohlc[ fd.OHLCV.time ].sort_index( ascending = False ).map(
+            pd.Timestamp.date
+            ).unique( )
 
         # for _date in self.List_Distinct_TradeDate:
         #     print ("date available:" + str(_date))
@@ -121,21 +117,57 @@ class IndexAnalysis :
             # mask = pd.to_datetime( self.df_Ohlc[fd.OHLCV.time]).date() == trading_date
             mask = self.df_Ohlc[ fd.OHLCV.time ].astype( str ).str[ 0 :10 ] == str( trading_date )
             # replace('-','')
-            df_feed = self.df_Ohlc.loc[ mask ]
-            self.EntryTrade( df_feed.sort_index( ascending = False ) , trading_date )
+            df_feed = self.df_Ohlc.loc[ mask ].dropna( )
+            self.StartTrading( df_feed.sort_index( ascending = False ) , trading_date )
 
             # df_feed.head()
             # print( len( df_feed ) )
 
             # df_feed = self.df_Ohlc.where( self.df_Ohlc[fd.OHLCV.time].astype(datetime).data() ==  trading_date)
 
+        print( "Trade Bank Complted" )
+        # print(self.df_Ohlc)
+
     def Add_trades_to_TradeBank( self , df_today ) :
 
-        concat_df = pd.concat( [ self.df_Trades , df_today ] )
+        self.df_Trades = pd.concat( [ self.df_Trades , df_today ] )
+        # for trade in df_today.iterrows():
+        # self.df_Trades = pd.concat( [ self.df_Trades , df_today ] , ignore_index=True )
 
-        return concat_df
+        return self.df_Trades
 
-    def EntryTrade( self , df , trddate ) :
+    def Calculate_Pnl( self , qty , buyprice , Ltp ) :
+        _pnl = 0.0
+        if qty > 0 :
+            _pnl = round( qty * (Ltp-buyprice) , 2 )
+        else :
+            _pnl = round( -1 * qty * (Ltp-buyprice) , 2 )
+
+        return (_pnl)
+
+    def ExitTrades_update_pnl( self , df_Open_Trades , Ltp: float , currenttime , tradedate ) :
+
+        inttime = int( str( currenttime ) )
+        # print("Current Time" , inttime)
+
+        for idx , trd in df_Open_Trades.iterrows( ) :
+
+            if (trd[ PlaceOrder.Status ] == TradeStatus.Close) :
+                continue
+
+            pnl = self.Calculate_Pnl( trd[ PlaceOrder.Qty ] , trd[ PlaceOrder.EntryPrice ] , Ltp )
+            if inttime > 152000 and trd[ PlaceOrder.Status ] == TradeStatus.Open :
+                df_Open_Trades.loc[ idx , PlaceOrder.Status ] = TradeStatus.Close
+                df_Open_Trades.loc[ idx , PlaceOrder.ExitTime ] = currenttime
+                df_Open_Trades.loc[ idx , PlaceOrder.ExitPrice ] = Ltp
+                df_Open_Trades.loc[ idx , PlaceOrder.ExitDate ] = tradedate
+                df_Open_Trades.loc[ idx , PlaceOrder.PnL ] = pnl
+
+            elif trd[ PlaceOrder.Status ] == TradeStatus.Open :
+                df_Open_Trades.loc[ idx , PlaceOrder.PnL ] = pnl
+                df_Open_Trades.loc[ idx , PlaceOrder.Ltp ] = Ltp
+
+    def StartTrading( self , df , trddate ) :
         # print(len( df))
         # convert to List
         # quotes_list = [
@@ -144,7 +176,7 @@ class IndexAnalysis :
         #     in zip( df[ fd.OHLCV.time] , df[ fd.OHLCV.into] , df[ fd.OHLCV.inth ] , df[ fd.OHLCV.intl ] , df[ fd.OHLCV.intc ] , df[ fd.OHLCV.v ] )
         # ]
 
-        df_exchange = pd.DataFrame( data = None , columns = self.df_Trades.columns , index = self.df_Trades.index )
+        df_exchange = pd.DataFrame( data = None , columns = self.df_Trades.columns )
 
         quotes_list = [ ]
         m_open = 0
@@ -164,7 +196,7 @@ class IndexAnalysis :
             Ltp = bar[ fd.OHLCV.intc ]
 
             if flag_open == True :
-                print( "First Tick Update" )
+                # print( "First Tick Update" )
                 m_open = open
                 m_high = high
                 m_low = low
@@ -178,19 +210,34 @@ class IndexAnalysis :
                 m_high = high
 
             m_close = Ltp
+            _entrytime = bar[ fd.OHLCV.time ].time( )
+
+            currenttime = bar[ fd.OHLCV.time ].time( ).strftime( "%H%M%S" )
+            # print(currenttime)
+
+            """ Exit or Update PnL of The Open tardes"""
+            self.ExitTrades_update_pnl( df_exchange , Ltp , currenttime , trddate )
+
+            inttime = int( str( currenttime ) )
+
+            if inttime > 152500 :
+                continue
 
             q = Quote( bar[ fd.OHLCV.time ] , bar[ fd.OHLCV.into ] , bar[ fd.OHLCV.inth ] , bar[ fd.OHLCV.intl ] ,
                        bar[ fd.OHLCV.intc ] , bar[ fd.OHLCV.v ]
                        )
             quotes_list.append( q )
 
-            results = indicators.get_sma( quotes_list , 50 , CandlePart.CLOSE )
+            results = indicators.get_sma( quotes_list , 5 , CandlePart.CLOSE )
+            results_rsi = indicators.get_rsi( quotes_list , 5 )
 
             final_res = results[ -1 ].sma
+            rsi = results_rsi[ -1 ].rsi
+
             mess = " TradeDate : "+str( trddate )+" Time"+str( bar[ fd.OHLCV.time ] )+" Open :"+str( open
                                                                                                      )+" High :"+str(
                 high
-                )+" Low :"+str( low )+" Close :"+str( close )+" "
+            )+" Low :"+str( low )+" Close :"+str( close )+" "
             # print( mess+str( results[ -1 ].sma ) )
 
             """Entry Condition """
@@ -200,18 +247,69 @@ class IndexAnalysis :
 
             if final_res is not None :
 
-                ohlc4 = (open+high+low+close) / 4
-                m_ohlc = (m_open+m_high+m_low+m_close) / 4
+                if (rsi is not None) :
 
-                if final_res > Ltp and Ltp > m_open and body_length > 30 and Ltp > ohlc4 and Ltp > m_ohlc :
-                    _trddate = trddate
+                    ohlc4 = (open+high+low+close) / 4
+                    m_ohlc = (m_open+m_high+m_low+m_close) / 4
 
-                    _entrytime = bar[ fd.OHLCV.time ].time( )
-                    print( _entrytime )
+                    if final_res > Ltp and rsi > 49 and body_length > 10 and Ltp > m_ohlc :
+                        _trddate = trddate
 
-                    df_exchange.loc[ len( df_exchange ) ] = [ _trddate , _entrytime , 1 , Ltp , TradeStatus.Open , Ltp ,
-                                                              0 , -1 , -1 , -1 ]
+                        # print( "New Trade Entry :" , _entrytime )
+
+                        df_exchange.loc[ len( df_exchange ) ] = [ trddate , _entrytime , 1 , Ltp , TradeStatus.Open ,
+                                                                  Ltp ,
+                                                                  0 , -1 , -1 , -1 ]
 
         # print("Trade Bank :",self.df_Trades )
 
-        print( self.Add_trades_to_TradeBank( df_exchange ) )
+        self.Add_trades_to_TradeBank( df_exchange )
+
+        # print("Task : Back Testing (BT) completed Sucessfully")
+
+    def Run_StrategyAnalysis( self ) :
+        ListTradeExecutedDate = self.df_Trades[ PlaceOrder.EntryDate ].unique( )
+        # self.df_Trades.to_csv( "Trades_z" , encoding = 'utf-8' )
+
+        for extrades in ListTradeExecutedDate :
+            # print(extrades)
+
+            mask = self.df_Trades[ PlaceOrder.EntryDate ] == extrades
+            df_record = self.df_Trades.where( mask ).dropna( )
+
+            m_win_trade = 0
+            m_loss_trade = 0
+
+            m_profit = 0
+            m_loss = 0
+            m_total_trade = 0
+
+            m_Max_Gain_point = 0
+            m_Max_Loss_Point = 0
+
+            for idx , trd in df_record.iterrows( ) :
+                m_total_trade = m_total_trade+1
+                _pnl = trd[ PlaceOrder.PnL ]
+                if _pnl >= 0 :
+                    m_win_trade = m_win_trade+1
+                    m_profit = m_profit+_pnl
+
+                    if m_Max_Gain_point < _pnl :
+                        m_Max_Gain_point = _pnl
+                else :
+                    m_loss_trade = m_loss_trade+1
+                    m_loss = m_loss+_pnl
+
+                    if m_Max_Loss_Point > _pnl :
+                        m_Max_Loss_Point = _pnl
+
+            print( "****** Post Trade Analysis Metrics **********" )
+            print( "Executed trade Analysis :" , extrades )
+            print( "Total Trades :" , m_total_trade )
+            print( "Profit/Loss Ratio:" , m_win_trade , "/" , m_loss_trade )
+            print( "Total  Point Gained :" , m_profit )
+            print( "Total Return:" , m_profit+m_loss , "\n" )
+            print( "Loss Point :" , m_loss )
+            print( "Max Profit :" , m_Max_Gain_point )
+            print( "Max Loss :" , m_Max_Loss_Point )
+            print( "\n" )
