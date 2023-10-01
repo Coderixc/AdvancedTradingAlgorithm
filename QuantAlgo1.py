@@ -64,6 +64,14 @@ class PlaceOrder :
     ExitDate = "ExitDate"
     MaxProfit = "MaxProfit"
     MaxLoss = "MaxLoss"
+    StopLoss = "StopLoss"
+    TargetPoint = "TargetPoint"
+
+
+class RiskManagement :
+    StopLoss = 30
+    Targetpoint = 50
+    IsAllowed = True
 
 
 #  create class to load OHLC data
@@ -85,7 +93,7 @@ class IndexAnalysis :
             columns = [ PlaceOrder.EntryDate , PlaceOrder.EntryTime , PlaceOrder.Qty , PlaceOrder.EntryPrice ,
                         PlaceOrder.Status , PlaceOrder.Ltp
                 , PlaceOrder.PnL , PlaceOrder.ExitPrice , PlaceOrder.ExitTime , PlaceOrder.ExitDate ,
-                        PlaceOrder.MaxProfit , PlaceOrder.MaxLoss ]
+                        PlaceOrder.MaxProfit , PlaceOrder.MaxLoss , PlaceOrder.StopLoss , PlaceOrder.TargetPoint ]
         )
 
     def reverse_dataframe( self ) :
@@ -119,7 +127,7 @@ class IndexAnalysis :
 
         for trading_date in self.List_Distinct_TradeDate :
             """ Get back Data"""
-            print( trading_date )
+            print( "Proceeding Back testing for : " , trading_date )
             # mask = pd.to_datetime( self.df_Ohlc[fd.OHLCV.time]).date() == trading_date
             mask = self.df_Ohlc[ fd.OHLCV.time ].astype( str ).str[ 0 :10 ] == str( trading_date )
             # replace('-','')
@@ -164,7 +172,30 @@ class IndexAnalysis :
             _maxprofit = trd[ PlaceOrder.MaxProfit ]
             _maxLoss = trd[ PlaceOrder.MaxLoss ]
             pnl = self.Calculate_Pnl( trd[ PlaceOrder.Qty ] , trd[ PlaceOrder.EntryPrice ] , Ltp )
-            if inttime > 152000 and trd[ PlaceOrder.Status ] == TradeStatus.Open :
+
+            if RiskManagement.IsAllowed == True :
+                _stoploss = trd[ PlaceOrder.StopLoss ]
+                _target = trd[ PlaceOrder.TargetPoint ]
+                # exit Trades  If above conditions is followed
+
+                if Ltp <= _stoploss :
+                    df_Open_Trades.loc[ idx , PlaceOrder.Status ] = TradeStatus.Close
+                    df_Open_Trades.loc[ idx , PlaceOrder.ExitTime ] = currenttime
+                    df_Open_Trades.loc[ idx , PlaceOrder.ExitPrice ] = Ltp
+                    df_Open_Trades.loc[ idx , PlaceOrder.ExitDate ] = tradedate
+                    df_Open_Trades.loc[ idx , PlaceOrder.PnL ] = pnl
+                elif Ltp >= _target :
+
+                    df_Open_Trades.loc[ idx , PlaceOrder.Status ] = TradeStatus.Close
+                    df_Open_Trades.loc[ idx , PlaceOrder.ExitTime ] = currenttime
+                    df_Open_Trades.loc[ idx , PlaceOrder.ExitPrice ] = Ltp
+                    df_Open_Trades.loc[ idx , PlaceOrder.ExitDate ] = tradedate
+                    df_Open_Trades.loc[ idx , PlaceOrder.PnL ] = pnl
+
+                # continue
+            #     Pass operation to Next Bar
+
+            elif inttime > 151500 and trd[ PlaceOrder.Status ] == TradeStatus.Open :
                 df_Open_Trades.loc[ idx , PlaceOrder.Status ] = TradeStatus.Close
                 df_Open_Trades.loc[ idx , PlaceOrder.ExitTime ] = currenttime
                 df_Open_Trades.loc[ idx , PlaceOrder.ExitPrice ] = Ltp
@@ -179,11 +210,11 @@ class IndexAnalysis :
                 df_Open_Trades.loc[ idx , PlaceOrder.PnL ] = pnl
                 df_Open_Trades.loc[ idx , PlaceOrder.Ltp ] = Ltp
 
-            if pnl > _maxprofit :
-                trd[ PlaceOrder.MaxProfit ] = pnl
+            if _maxprofit < pnl :
+                df_Open_Trades.loc[ idx , PlaceOrder.MaxProfit ] = pnl
 
-            if (pnl < _maxLoss) :
-                trd[ PlaceOrder.MaxLoss ] = pnl
+            if (_maxLoss > pnl) :
+                df_Open_Trades.loc[ idx , PlaceOrder.MaxLoss ] = pnl
 
     def StartTrading( self , df , trddate ) :
         # print(len( df))
@@ -204,6 +235,8 @@ class IndexAnalysis :
 
         flag_open = True
 
+        prev_candle_ohlc4 = 0
+
         for id , bar in df.iterrows( ) :
             # quotes_list.insert(bar[fd.OHLCV.time],bar[fd.OHLCV.into],bar[fd.OHLCV.inth],bar[fd.OHLCV.intl],bar[fd.OHLCV.intc],bar[fd.OHLCV.v])
 
@@ -211,7 +244,7 @@ class IndexAnalysis :
             high = bar[ fd.OHLCV.inth ]
             low = bar[ fd.OHLCV.intl ]
             close = bar[ fd.OHLCV.intc ]
-            Ltp = bar[ fd.OHLCV.intc ]
+            Ltp = bar[ fd.OHLCV.into ]
 
             if flag_open == True :
                 # print( "First Tick Update" )
@@ -246,8 +279,8 @@ class IndexAnalysis :
                        )
             quotes_list.append( q )
 
-            results = indicators.get_sma( quotes_list , 26 , CandlePart.CLOSE )
-            results_rsi = indicators.get_rsi( quotes_list , 14 )
+            results = indicators.get_sma( quotes_list , 50 , CandlePart.CLOSE )
+            results_rsi = indicators.get_rsi( quotes_list , 10 )
 
             final_res = results[ -1 ].sma
             rsi = results_rsi[ -1 ].rsi
@@ -267,19 +300,25 @@ class IndexAnalysis :
 
                 if (rsi is not None) :
 
-                    ohlc4 = (open+high+low+close) / 4
-                    m_ohlc = (m_open+m_high+m_low+m_close) / 4
+                    m_ohlc = (m_open+m_high+m_low+Ltp) / 4
 
-                    if final_res > Ltp and rsi > 51 and body_length > 30 and Ltp >= m_ohlc :
+                    if final_res > Ltp and rsi > 51 and body_length > 30 and Ltp >= m_ohlc and Ltp >= prev_candle_ohlc4 :
                         _trddate = trddate
                         _maxprofit = 0
                         _maxloss = 0
-
+                        _stoplosss = 0
+                        _targetpoint = 0
                         # print( "New Trade Entry :" , _entrytime )
+                        if RiskManagement.IsAllowed == True :
+                            _stoplosss = Ltp-RiskManagement.StopLoss
+                            _targetpoint = Ltp+RiskManagement.Targetpoint
 
                         df_exchange.loc[ len( df_exchange ) ] = [ trddate , _entrytime , 1 , Ltp , TradeStatus.Open ,
                                                                   Ltp ,
-                                                                  0 , -1 , -1 , -1 , _maxprofit , _maxloss ]
+                                                                  0 , -1 , -1 , -1 , _maxprofit , _maxloss ,
+                                                                  _stoplosss , _targetpoint ]
+
+            prev_candle_ohlc4 = (open+high+low+close) / 4
 
         # print("Trade Bank :",self.df_Trades )
 
@@ -359,15 +398,24 @@ class IndexAnalysis :
             print( "Max Loss :" , m_Max_Loss_Point )
             print( "\n" )
 
-        #     add records to Report File
-        if print_tocsv == True :
-            PnL_ratio = (m_win_trade / m_loss_trade)
-            _total_return = (m_profit+m_loss)
-            _record = [ extrades , m_total_trade , m_max_profit , m_max_loss , m_win_trade , m_loss_trade , PnL_ratio ,
-                        m_profit , _total_return , m_loss ]
+            #     add records to Report File
+            if print_tocsv == True :
+                try :
+                    PnL_ratio = (m_win_trade / m_loss_trade)
 
-            df_Report.loc[ len( df_Report ) ] = _record
+                except :
+                    PnL_ratio = m_win_trade
+                _total_return = (m_profit+m_loss)
+                _record = [ extrades , m_total_trade , m_max_profit , m_max_loss , m_win_trade , m_loss_trade ,
+                            PnL_ratio ,
+                            m_profit , _total_return , m_loss ]
+
+                df_Report.loc[ len( df_Report ) ] = _record
 
         if print_tocsv == True :
             print( "Record & Trades" )
             print( "Preparing Post Trade Analysis For BT" )
+            print( self.df_Trades.to_string( ) )
+            print( df_Report.to_string( ) )
+            # df_Report.to_csv("Report_1" , encoding = 'utf-8')
+            # self.df_Trades.to_csv("Trades_1" , encoding = 'utf-8')
