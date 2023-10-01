@@ -1,0 +1,11 @@
+class ReportFile :
+    TradeDate = "TradeDate"
+    TotalTrades = "TotalTrades"
+    MaxProfit = "MaxProfit"
+    MaxLoss = "MaxLoss"
+    NoOf_ProfitTrades = "NoOf_ProfitTrades"
+    NoOf_LossTrades = "NoOf_LossTrades"
+    Profit_Loss_Ratio = "Profit_Loss_Ratio"
+    Total_PointGained = "Total_PointGained"
+    Total_Return = "Total_Return"
+    Loss_point = "Loss_Point"

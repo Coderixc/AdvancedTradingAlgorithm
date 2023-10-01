@@ -5,6 +5,7 @@ from stock_indicators import Quote
 from stock_indicators import indicators
 
 import FinancialData as fd
+import Report as R
 
 
 # new seperate class to load data
@@ -61,6 +62,10 @@ class PlaceOrder :
     ExitPrice = "ExitPrice"
     ExitTime = "ExitTime"
     ExitDate = "ExitDate"
+    MaxProfit = "MaxProfit"
+    MaxLoss = "MaxLoss"
+
+
 #  create class to load OHLC data
 class IndexAnalysis :
 
@@ -79,7 +84,8 @@ class IndexAnalysis :
         self.df_Trades = pd.DataFrame(
             columns = [ PlaceOrder.EntryDate , PlaceOrder.EntryTime , PlaceOrder.Qty , PlaceOrder.EntryPrice ,
                         PlaceOrder.Status , PlaceOrder.Ltp
-                , PlaceOrder.PnL , PlaceOrder.ExitPrice , PlaceOrder.ExitTime , PlaceOrder.ExitDate ]
+                , PlaceOrder.PnL , PlaceOrder.ExitPrice , PlaceOrder.ExitTime , PlaceOrder.ExitDate ,
+                        PlaceOrder.MaxProfit , PlaceOrder.MaxLoss ]
         )
 
     def reverse_dataframe( self ) :
@@ -155,6 +161,8 @@ class IndexAnalysis :
             if (trd[ PlaceOrder.Status ] == TradeStatus.Close) :
                 continue
 
+            _maxprofit = trd[ PlaceOrder.MaxProfit ]
+            _maxLoss = trd[ PlaceOrder.MaxLoss ]
             pnl = self.Calculate_Pnl( trd[ PlaceOrder.Qty ] , trd[ PlaceOrder.EntryPrice ] , Ltp )
             if inttime > 152000 and trd[ PlaceOrder.Status ] == TradeStatus.Open :
                 df_Open_Trades.loc[ idx , PlaceOrder.Status ] = TradeStatus.Close
@@ -163,9 +171,19 @@ class IndexAnalysis :
                 df_Open_Trades.loc[ idx , PlaceOrder.ExitDate ] = tradedate
                 df_Open_Trades.loc[ idx , PlaceOrder.PnL ] = pnl
 
+
+
+
+
             elif trd[ PlaceOrder.Status ] == TradeStatus.Open :
                 df_Open_Trades.loc[ idx , PlaceOrder.PnL ] = pnl
                 df_Open_Trades.loc[ idx , PlaceOrder.Ltp ] = Ltp
+
+            if pnl > _maxprofit :
+                trd[ PlaceOrder.MaxProfit ] = pnl
+
+            if (pnl < _maxLoss) :
+                trd[ PlaceOrder.MaxLoss ] = pnl
 
     def StartTrading( self , df , trddate ) :
         # print(len( df))
@@ -228,8 +246,8 @@ class IndexAnalysis :
                        )
             quotes_list.append( q )
 
-            results = indicators.get_sma( quotes_list , 5 , CandlePart.CLOSE )
-            results_rsi = indicators.get_rsi( quotes_list , 5 )
+            results = indicators.get_sma( quotes_list , 26 , CandlePart.CLOSE )
+            results_rsi = indicators.get_rsi( quotes_list , 14 )
 
             final_res = results[ -1 ].sma
             rsi = results_rsi[ -1 ].rsi
@@ -252,14 +270,16 @@ class IndexAnalysis :
                     ohlc4 = (open+high+low+close) / 4
                     m_ohlc = (m_open+m_high+m_low+m_close) / 4
 
-                    if final_res > Ltp and rsi > 49 and body_length > 10 and Ltp > m_ohlc :
+                    if final_res > Ltp and rsi > 51 and body_length > 30 and Ltp >= m_ohlc :
                         _trddate = trddate
+                        _maxprofit = 0
+                        _maxloss = 0
 
                         # print( "New Trade Entry :" , _entrytime )
 
                         df_exchange.loc[ len( df_exchange ) ] = [ trddate , _entrytime , 1 , Ltp , TradeStatus.Open ,
                                                                   Ltp ,
-                                                                  0 , -1 , -1 , -1 ]
+                                                                  0 , -1 , -1 , -1 , _maxprofit , _maxloss ]
 
         # print("Trade Bank :",self.df_Trades )
 
@@ -267,9 +287,21 @@ class IndexAnalysis :
 
         # print("Task : Back Testing (BT) completed Sucessfully")
 
-    def Run_StrategyAnalysis( self ) :
+    def Run_StrategyAnalysis( self , print_tocsv = False ) :
         ListTradeExecutedDate = self.df_Trades[ PlaceOrder.EntryDate ].unique( )
         # self.df_Trades.to_csv( "Trades_z" , encoding = 'utf-8' )
+
+        if print_tocsv == True :
+            df_Report = pd.DataFrame(
+                columns = [ R.ReportFile.TradeDate , R.ReportFile.TotalTrades , R.ReportFile.MaxProfit ,
+                            R.ReportFile.MaxLoss , R.ReportFile.NoOf_ProfitTrades , R.ReportFile.NoOf_LossTrades ,
+
+                            R.ReportFile.Profit_Loss_Ratio , R.ReportFile.Total_PointGained ,
+                            R.ReportFile.Total_Return ,
+                            R.ReportFile.Loss_point
+
+                            ]
+            )
 
         for extrades in ListTradeExecutedDate :
             # print(extrades)
@@ -287,12 +319,18 @@ class IndexAnalysis :
             m_Max_Gain_point = 0
             m_Max_Loss_Point = 0
 
+            m_max_profit = 0
+            m_max_loss = 0
+
             for idx , trd in df_record.iterrows( ) :
                 m_total_trade = m_total_trade+1
                 _pnl = trd[ PlaceOrder.PnL ]
                 if _pnl >= 0 :
                     m_win_trade = m_win_trade+1
                     m_profit = m_profit+_pnl
+
+                    if m_max_profit < _pnl :
+                        m_max_profit = _pnl
 
                     if m_Max_Gain_point < _pnl :
                         m_Max_Gain_point = _pnl
@@ -303,9 +341,16 @@ class IndexAnalysis :
                     if m_Max_Loss_Point > _pnl :
                         m_Max_Loss_Point = _pnl
 
+                    if m_max_loss > _pnl :
+                        m_max_loss = _pnl
+
             print( "****** Post Trade Analysis Metrics **********" )
             print( "Executed trade Analysis :" , extrades )
             print( "Total Trades :" , m_total_trade )
+
+            print( "Max Profit :" , m_max_profit )
+            print( "Max Loss :" , m_max_loss )
+
             print( "Profit/Loss Ratio:" , m_win_trade , "/" , m_loss_trade )
             print( "Total  Point Gained :" , m_profit )
             print( "Total Return:" , m_profit+m_loss , "\n" )
@@ -313,3 +358,16 @@ class IndexAnalysis :
             print( "Max Profit :" , m_Max_Gain_point )
             print( "Max Loss :" , m_Max_Loss_Point )
             print( "\n" )
+
+        #     add records to Report File
+        if print_tocsv == True :
+            PnL_ratio = (m_win_trade / m_loss_trade)
+            _total_return = (m_profit+m_loss)
+            _record = [ extrades , m_total_trade , m_max_profit , m_max_loss , m_win_trade , m_loss_trade , PnL_ratio ,
+                        m_profit , _total_return , m_loss ]
+
+            df_Report.loc[ len( df_Report ) ] = _record
+
+        if print_tocsv == True :
+            print( "Record & Trades" )
+            print( "Preparing Post Trade Analysis For BT" )
