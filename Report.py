@@ -8,4 +8,4 @@ class ReportFile :
     Profit_Loss_Ratio = "Profit_Loss_Ratio"
     Total_PointGained = "Total_PointGained"
     Total_Return = "Total_Return"
-    Loss_point = "Loss_Point"
+    Total_Loss_point = "Loss_Point"

@@ -69,8 +69,8 @@ class PlaceOrder :
 
 
 class RiskManagement :
-    StopLoss = 30
-    Targetpoint = 50
+    StopLoss = 26
+    Targetpoint = 80
     IsAllowed = True
 
 
@@ -125,6 +125,7 @@ class IndexAnalysis :
         #     d= str(row[ fd.OHLCV.time ])[0:10]
         #     # print(d)
 
+        print( "Total Trading Day : " , len( self.List_Distinct_TradeDate ) )
         for trading_date in self.List_Distinct_TradeDate :
             """ Get back Data"""
             print( "Proceeding Back testing for : " , trading_date )
@@ -182,6 +183,7 @@ class IndexAnalysis :
                     df_Open_Trades.loc[ idx , PlaceOrder.Status ] = TradeStatus.Close
                     df_Open_Trades.loc[ idx , PlaceOrder.ExitTime ] = currenttime
                     df_Open_Trades.loc[ idx , PlaceOrder.ExitPrice ] = Ltp
+                    df_Open_Trades.loc[ idx , PlaceOrder.Ltp ] = Ltp
                     df_Open_Trades.loc[ idx , PlaceOrder.ExitDate ] = tradedate
                     df_Open_Trades.loc[ idx , PlaceOrder.PnL ] = pnl
                 elif Ltp >= _target :
@@ -189,16 +191,18 @@ class IndexAnalysis :
                     df_Open_Trades.loc[ idx , PlaceOrder.Status ] = TradeStatus.Close
                     df_Open_Trades.loc[ idx , PlaceOrder.ExitTime ] = currenttime
                     df_Open_Trades.loc[ idx , PlaceOrder.ExitPrice ] = Ltp
+                    df_Open_Trades.loc[ idx , PlaceOrder.Ltp ] = Ltp
                     df_Open_Trades.loc[ idx , PlaceOrder.ExitDate ] = tradedate
                     df_Open_Trades.loc[ idx , PlaceOrder.PnL ] = pnl
 
                 # continue
             #     Pass operation to Next Bar
 
-            elif inttime > 151500 and trd[ PlaceOrder.Status ] == TradeStatus.Open :
+            if inttime > 151500 and trd[ PlaceOrder.Status ] == TradeStatus.Open :
                 df_Open_Trades.loc[ idx , PlaceOrder.Status ] = TradeStatus.Close
                 df_Open_Trades.loc[ idx , PlaceOrder.ExitTime ] = currenttime
                 df_Open_Trades.loc[ idx , PlaceOrder.ExitPrice ] = Ltp
+                df_Open_Trades.loc[ idx , PlaceOrder.Ltp ] = Ltp
                 df_Open_Trades.loc[ idx , PlaceOrder.ExitDate ] = tradedate
                 df_Open_Trades.loc[ idx , PlaceOrder.PnL ] = pnl
 
@@ -210,11 +214,11 @@ class IndexAnalysis :
                 df_Open_Trades.loc[ idx , PlaceOrder.PnL ] = pnl
                 df_Open_Trades.loc[ idx , PlaceOrder.Ltp ] = Ltp
 
-            if _maxprofit < pnl :
-                df_Open_Trades.loc[ idx , PlaceOrder.MaxProfit ] = pnl
+                if _maxprofit < pnl :
+                    df_Open_Trades.loc[ idx , PlaceOrder.MaxProfit ] = pnl
 
-            if (_maxLoss > pnl) :
-                df_Open_Trades.loc[ idx , PlaceOrder.MaxLoss ] = pnl
+                if (_maxLoss > pnl) :
+                    df_Open_Trades.loc[ idx , PlaceOrder.MaxLoss ] = pnl
 
     def StartTrading( self , df , trddate ) :
         # print(len( df))
@@ -331,13 +335,13 @@ class IndexAnalysis :
         # self.df_Trades.to_csv( "Trades_z" , encoding = 'utf-8' )
 
         if print_tocsv == True :
-            df_Report = pd.DataFrame(
+            self.df_Report = pd.DataFrame(
                 columns = [ R.ReportFile.TradeDate , R.ReportFile.TotalTrades , R.ReportFile.MaxProfit ,
                             R.ReportFile.MaxLoss , R.ReportFile.NoOf_ProfitTrades , R.ReportFile.NoOf_LossTrades ,
 
                             R.ReportFile.Profit_Loss_Ratio , R.ReportFile.Total_PointGained ,
                             R.ReportFile.Total_Return ,
-                            R.ReportFile.Loss_point
+                            R.ReportFile.Total_Loss_point
 
                             ]
             )
@@ -410,12 +414,48 @@ class IndexAnalysis :
                             PnL_ratio ,
                             m_profit , _total_return , m_loss ]
 
-                df_Report.loc[ len( df_Report ) ] = _record
+                self.df_Report.loc[ len( self.df_Report ) ] = _record
 
         if print_tocsv == True :
             print( "Record & Trades" )
-            print( "Preparing Post Trade Analysis For BT" )
-            print( self.df_Trades.to_string( ) )
-            print( df_Report.to_string( ) )
+            # print( "Preparing Post Trade Analysis For BT" )
+            # print( self.df_Trades.to_string( ) )
+            # print( self.df_Report.to_string( ) )
             # df_Report.to_csv("Report_1" , encoding = 'utf-8')
             # self.df_Trades.to_csv("Trades_1" , encoding = 'utf-8')
+
+    def Summary( self ) :
+
+        total_trades = 0
+        total_point_earned = 0
+        total_point_lost = 0
+
+        total_profit_trade = 0
+        total_lost_trade = 0
+
+        total_return = 0
+        for idx , report in self.df_Report.iterrows( ) :
+            total_profit_trade = total_profit_trade+report[ R.ReportFile.NoOf_ProfitTrades ]
+            total_lost_trade = total_lost_trade+report[ R.ReportFile.NoOf_LossTrades ]
+            total_trades = total_trades+report[ R.ReportFile.TotalTrades ]
+
+            total_point_earned = total_point_earned+report[ R.ReportFile.Total_PointGained ]
+            total_point_lost = total_point_lost+report[ R.ReportFile.Total_Loss_point ]
+            total_return = total_return+report[ R.ReportFile.Total_Return ]
+
+        print( "**        Summary of BT Test          **" )
+        print( "Total profit Trades" , total_profit_trade )
+        print( "Total Loss Trades" , total_lost_trade )
+        print( "Total Trades" , total_trades )
+
+        print( "Total point Earned(Point)" , round( total_point_earned , 2 ) )
+        print( "Total point Lost(Point)" , round( total_point_lost , 2 ) )
+        print( "Total Return(s) Point" , round( total_return , 2 ) )
+
+        try :
+            _avg = round( total_return / total_trades , 2 )
+        except :
+            _avg = 0
+        print( "Average PnL of Each Trade(s)" , _avg )
+
+        print( "Probability Of Win Trade" , round( (total_profit_trade / total_trades) * 100 , 2 ) , "%" )
