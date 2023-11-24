@@ -1,6 +1,6 @@
 class RiskManagement :
-    StopLoss = 20
-    Targetpoint = 50
+    StopLoss = 50
+    Targetpoint = 80
     IsAllowed = True
 
     EntryTime = 91400
