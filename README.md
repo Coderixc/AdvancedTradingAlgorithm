@@ -14,7 +14,7 @@ This Python project is designed for backtesting trading strategies using histori
 - Saves detailed trade statistics, including MTM, best profit/loss, and various metrics.
 
 ## Dependencies
-- [List of third-party libraries used for financial indicators.](https://github.com/DaveSkender/Stock.Indicators.Python.git)
+- Stock.Indicators.Python  [List of third-party libraries used for financial indicators.](https://github.com/DaveSkender/Stock.Indicators.Python.git)
 
 ## Results
 The backtesting results are summarized in the results/ directory. Key metrics include:
