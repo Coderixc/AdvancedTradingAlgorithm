@@ -2,7 +2,7 @@
 # Stock Market Backtesting in Python
 ## Overview
 
-This Python project is a comprehensive backtesting framework for evaluating trading strategies using historical data from the Indian Stock Market. The implementation follows object-oriented programming (OOP) principles and maintains a clean code structure.
+This Python project is designed for backtesting trading strategies using historical data from the Indian Stocks Market, specifically sourced from Finvasia Broker (Shoonya Broker). The entire code is structured using object-oriented programming (OOP) principles, ensuring a clean and modular design.
 
 ## Features
 
@@ -12,6 +12,9 @@ This Python project is a comprehensive backtesting framework for evaluating trad
 - Integrates popular financial indicators like RSI, MACD, SMA, EMA, etc., using third-party libraries.
 - Fetches historical data from Finvasia Broker (Shoonya Broker).
 - Saves detailed trade statistics, including MTM, best profit/loss, and various metrics.
+
+## Dependencies
+- [List of third-party libraries used for financial indicators.](https://github.com/DaveSkender/Stock.Indicators.Python.git)
 
 ## Results
 The backtesting results are summarized in the results/ directory. Key metrics include:
