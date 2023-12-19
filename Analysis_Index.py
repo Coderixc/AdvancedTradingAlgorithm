@@ -1,3 +1,5 @@
+import matplotlib.pylab as plt
+import numpy as np
 import pandas as pd
 import yfinance as yf
 
@@ -44,13 +46,15 @@ class Analysis_Index :
 
         self.get_history_data( TradingSymbol )
         self.evaluate_Metrics( )
-        self.print_All_stats( )
+        # self.print_All_stats( )
+
+        self.Get_Results_on_Quartile_framework( )
 
     def get_history_data( self , TradingSymbol ) :
         try :
 
             """Call Yahoo Finance Function () to get data """
-            self.df_history_data = yf.download( TradingSymbol , start = "2002-01-01" , end = "2023-10-01"
+            self.df_history_data = yf.download( TradingSymbol , start = "2023-01-01" , end = "2023-12-31"
                                                 ).reset_index( )
             # self.df_history_data = data.DataReader( TradingSymbol , start = "2023-01-01" , end = "2023-10-01" )
 
@@ -184,3 +188,87 @@ class Analysis_Index :
             print( stat.Year , "," , round( stat.Min_Wick , 2 ) , "," , round( stat.Max_Wick , 2 ) , "," ,
                    round( stat.Min_Body , 2 ) , "," , round( stat.Max_Body )
                    )
+
+    def Get_Results_on_Quartile_framework( self ) :
+        try :
+            print( "Quartile" )
+
+            processing_year = 0
+
+            _list_wick = [ ]
+            _list_body = [ ]
+
+            total_rows = len( self.list_metrics )
+            counter = 0
+            for item in self.list_metrics :
+
+                counter = counter+1
+
+                """ Step  1 :Tramsfer ( update) First Record """
+                if (processing_year != item.Date.year and processing_year != 0) or (
+                        total_rows == counter and processing_year != 0) :
+                    processing_year = item.Date.year
+                    print( "Processing Quartile on :" , processing_year )
+
+                    """ perform Quartile """
+                    _list_wick.sort( )
+                    _list_body.sort( )
+                    print( "On Wick " )
+                    self.calculating_Quartile( _list_wick )
+                    print( "On Body " )
+                    self.calculating_Quartile( _list_body )
+
+                    """ Clean(Clear) Run Time List """
+                    _list_body.clear( )
+                    _list_wick.clear( )
+
+                """Step 2 : Read and Load """
+                processing_year = item.Date.year
+                _list_wick.append( item.Wick_2_Wick_Range )
+                _list_body.append( item.Body_2_Body_Range )
+                # print( "Test" , item.Date.year )
+
+
+
+
+        except :
+            print( "Error(s) Occured" )
+
+    def calculating_Quartile( self , list_input ) :
+        try :
+            list = np.array( list_input )
+            q1 = np.quantile( list , .25 )
+            q2 = np.quantile( list , .50 )
+
+            q3 = np.quantile( list , .75 )
+            _100 = np.quantile( list , .100 )
+
+            print( "25 % is :" , q1 )
+            print( "50 % is :" , q2 )
+            print( "75 % is :" , q3 )
+            print( "100% is :" , _100 )
+
+            """PLT Data """
+            plt.boxplot( list , vert = False )
+            # Add quartile annotations
+            plt.annotate( f'Q1: {q1:.2f}' , xy = (q1 , 1) , xytext = (q1 , 1.1) ,
+                          arrowprops = dict( facecolor = 'black' , shrink = 0.05 )
+                          )
+            plt.annotate( f'Q2: {q2:.2f}' , xy = (q2 , 1) , xytext = (q2 , 1.1) ,
+                          arrowprops = dict( facecolor = 'black' , shrink = 0.05 )
+                          )
+            plt.annotate( f'Q3: {q3:.2f}' , xy = (q3 , 1) , xytext = (q3 , 1.1) ,
+                          arrowprops = dict( facecolor = 'black' , shrink = 0.05 )
+                          )
+
+            # Add title and labels
+            plt.title( 'Box Plot of Data with Quartiles' )
+            plt.xlabel( 'Values' )
+
+            # Show the plot
+            plt.show( )
+
+
+
+        except :
+            print( "Error(s) While Calcualating Quartile" )
