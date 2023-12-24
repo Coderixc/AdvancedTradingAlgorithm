@@ -72,8 +72,12 @@ class Analysis_Index :
                     print( "evaluating last record" )
 
                     """ Plot data to Charts- Graph"""
-                    self.plot_point_into_graphh( datetime , wick_2_wick , processing_year , "Wick Range" , "On Wick" )
-                    self.plot_point_into_graphh( datetime , body_2_body , processing_year , "Body Range" , "On Body" )
+                    self.plot_point_into_multi_graphh( datetime , wick_2_wick , processing_year , "Wick Range" ,
+                                                       "ON WICK ABS(H-L)"
+                                                       )
+                    self.plot_point_into_multi_graphh( datetime , body_2_body , processing_year , "Body Range" ,
+                                                       "On Body ABS(O-C)"
+                                                       )
 
                     processing_year = record.Date.year
 
@@ -89,9 +93,11 @@ class Analysis_Index :
 
                 if (no_of_record == counter) :  # last item in record
                     print( "Step 3 :Last Record - Evaluating" )
-                    self.plot_point_into_graphh( datetime , wick_2_wick , processing_year , "Wick Range" , "On Wick" )
+                    self.plot_point_into_multi_graphh( datetime , wick_2_wick , processing_year , "Wick Range" ,
+                                                       "ON WICK ABS(H-L)"
+                                                       )
                     self.plot_point_into_multi_graphh( datetime , body_2_body , processing_year , "Body Range" ,
-                                                       "On Body"
+                                                       "On Body ABS(O-C)"
                                                        )
 
 
@@ -265,9 +271,9 @@ class Analysis_Index :
                     _list_wick.sort( )
                     _list_body.sort( )
                     print( "On Wick " )
-                    self.calculating_Quartile( _list_wick , processing_year , "ON WICK" )
+                    self.calculating_Quartile( _list_wick , processing_year , "ON WICK ABS(H-L)" )
                     print( "On Body " )
-                    self.calculating_Quartile( _list_body , processing_year , "On BODY" )
+                    self.calculating_Quartile( _list_body , processing_year , "On BODY ABS(O-C) " )
 
                     """ Clean(Clear) Run Time List """
                     _list_body.clear( )
@@ -339,23 +345,20 @@ class Analysis_Index :
 
     def plot_point_into_multi_graphh( self , date_time , datapoints , processing_year , message , type_body_or_wick ) :
         try :
-            plt.plot( date_time , datapoints )
-            plt.plot( date_time , datapoints , 'k.-' , label = 'Original data' )
+            # plt.plot( date_time , datapoints )
+            plt.plot( date_time , datapoints , 'k.-' , label = f'Range {type_body_or_wick} ' )
 
-            window_size = 6
-            rolling_averages = np.mean(
-                np.array( [ datapoints[ i :i+window_size ] for i in range( len( datapoints )-window_size+1 ) ] ) ,
-                axis = 1
-            )
+            AVERAGE = 0
+            if len( datapoints ) > 0 :
+                AVERAGE = sum( datapoints ) / len( datapoints )
 
-            plt.plot( date_time , rolling_averages , 'r.-' , label = 'Running average' )
-            plt.yticks( [ -1 , -0.5 , 0 , 0.5 , 1 ] )
-            plt.grid( linestyle = ':' )
-            plt.legend( )
+            plt.axhline( AVERAGE , color = 'red' , linestyle = '--' , linewidth = 3 , label = 'Average' )
 
             plt.xlabel( "Date Time" )  # add X-axis label
             plt.ylabel( message )  # add Y-axis label
-            plt.title( f"Processing Year :{processing_year} on {type_body_or_wick}" )  # add title
+
+            legend = plt.legend( loc = 'upper right' )
+            plt.title( f"Processing Year :{processing_year}  {type_body_or_wick}" )  # add title
 
             plt.show( )
 
