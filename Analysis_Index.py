@@ -112,7 +112,7 @@ class Analysis_Index :
         try :
 
             """Call Yahoo Finance Function () to get data """
-            self.df_history_data = yf.download( TradingSymbol , start = "2022-01-01" , end = "2023-12-31"
+            self.df_history_data = yf.download( TradingSymbol , start = "2019-01-01" , end = "2019-12-31"
                                                 ).reset_index( )
             # self.df_history_data = data.DataReader( TradingSymbol , start = "2023-01-01" , end = "2023-10-01" )
 
