@@ -27,3 +27,6 @@ Total Point Earned (Point)
 Total Trades
 Total Loss Trades
 Total Profit Trades
+
+## Contact
+If you are interested in collaborating or need assistance with algorithmic trading strategies, feel free to reach out.
