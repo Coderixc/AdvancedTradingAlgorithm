@@ -285,27 +285,25 @@ class IndexAnalysis :
             """ Exit or Update PnL of The Open tardes"""
             self.ExitTrades_update_pnl( df_exchange , Ltp , currenttime , trddate )
 
+            inttime = int ( str ( currenttime ) )
+            print ( "BT Processing Time : " , inttime )
 
-            inttime = int( str( currenttime ) )
-            print( "BT Processing Time : " , inttime )
-
+            q = Quote ( bar [ fd.OHLCV.time ] , bar [ fd.OHLCV.into ] , bar [ fd.OHLCV.inth ] , bar [ fd.OHLCV.intl ] ,
+                        bar [ fd.OHLCV.intc ] , bar [ fd.OHLCV.v ]
+                        )
+            quotes_list.append ( q )
             if inttime > 151500 :
                 continue
 
-            q = Quote( bar[ fd.OHLCV.time ] , bar[ fd.OHLCV.into ] , bar[ fd.OHLCV.inth ] , bar[ fd.OHLCV.intl ] ,
-                       bar[ fd.OHLCV.intc ] , bar[ fd.OHLCV.v ]
-                       )
-            quotes_list.append( q )
-
-            results = indicators.get_sma( quotes_list , 5 , CandlePart.CLOSE )
+            results = indicators.get_sma ( quotes_list , 5 , CandlePart.CLOSE )
             # results_rsi = indicators.get_rsi( quotes_list , 10 )
 
-            final_res = results[ -1 ].sma
+            final_res = results [ -1 ].sma
             # rsi = results_rsi[ -1 ].rsi
             rsi = 0
 
-            mess = " TradeDate : "+str( trddate )+" Time"+str( bar[ fd.OHLCV.time ] )+" Open :"+str( open
-                                                                                                     )+" High :"+str(
+            mess = " TradeDate : " + str ( trddate ) + " Time" + str ( bar [ fd.OHLCV.time ] ) + " Open :" + str ( open
+                                                                                                                   ) + " High :" + str (
                 high
             )+" Low :"+str( low )+" Close :"+str( close )+" "
             # print( mess+str( results[ -1 ].sma ) )
