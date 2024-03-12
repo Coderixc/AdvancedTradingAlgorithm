@@ -28,5 +28,18 @@ Total Trades
 Total Loss Trades
 Total Profit Trades
 
+Metrics Explanation:
+Executed trade Analysis: The number of trades executed during backtesting.
+Total Trades: The total number of trades considered in the analysis.
+Max Profit: The maximum profit achieved in any single trade.
+Max Loss: The maximum loss incurred in any single trade.
+Profit/Loss Ratio: The ratio of winning trades to losing trades.
+Total Point Gained: The total points gained across all trades.
+Total Return: The total return, which is the sum of profits and losses.
+Loss Point: The total points lost across all trades.
+Max Profit: The maximum point gain in any single trade.
+Max Loss: The maximum point loss in any single trade.
+
+
 ## Contact
 If you are interested in collaborating or need assistance with algorithmic trading strategies, feel free to reach out.
